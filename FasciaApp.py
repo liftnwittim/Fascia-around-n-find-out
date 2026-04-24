@@ -1,5 +1,20 @@
 # CoreDataContract
 
+import cv2
+import numpy as np
+from scipy.stats import pearsonr
+import mediapipe as mp
+import os
+from flask import Flask, request, jsonify
+
+mp_pose = mp.solutions.pose
+pose = mp_pose.Pose(
+    static_image_mode=False,
+    model_complexity=2,
+    min_detection_confidence=0.5,
+    min_tracking_confidence=0.5
+)
+
 FramePacket:
   rgb_frames:         List[np.ndarray]   # shape (T, H, W, 3), T = frame count
   skeleton:           Dict[joint_name, Vec3]  # 33 MediaPipe landmarks
@@ -488,3 +503,22 @@ def dispatch_alerts(alert_queue: List[AlertFlag], score: FascialIntegrityScore):
             "retest_in": meta["retest_sec"],
             "hard_block": meta.get("hard_block", False)
         }
+
+from flask import Flask, request, jsonify
+import os
+
+app = Flask(__name__)
+
+@app.route("/analyze", methods=["POST"])
+def analyze():
+    # your pipeline logic here
+    return jsonify({"score": 0, "tier": "pending"})
+
+@app.route("/health", methods=["GET"])
+def health():
+    return jsonify({"status": "ok"})
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
+
