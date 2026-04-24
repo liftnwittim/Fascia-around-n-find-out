@@ -14,19 +14,24 @@ pose = mp_pose.Pose(
     min_detection_confidence=0.5,
     min_tracking_confidence=0.5
 )
+from dataclasses import dataclass, field
+from typing import List, Dict, Any
 
-FramePacket:
-  rgb_frames:         List[np.ndarray]   # shape (T, H, W, 3), T = frame count
-  skeleton:           Dict[joint_name, Vec3]  # 33 MediaPipe landmarks
-  skin_mask:          np.ndarray         # binary, same HxW as frame
-  fps:                int                # capture framerate (target: 240 slo-mo)
-  timestamp_ms:       int
+@dataclass
+class FramePacket:
+    rgb_frames: List[np.ndarray] = field(default_factory=list)
+    skeleton: Dict[str, Any] = field(default_factory=dict)
+    skin_mask: np.ndarray = None
+    fps: int = 30
+    timestamp_ms: int = 0
 
-ModuleScore:
-  raw:         float          # 0.0 – 1.0
-  confidence:  float          # 0.0 – 1.0 (occlusion / lighting quality)
-  flags:       List[AlertFlag]
-  debug_map:   np.ndarray     # heatmap for overlay rendering
+@dataclass
+class ModuleScore:
+    raw: float = 0.0
+    confidence: float = 0.0
+    flags: List[Any] = field(default_factory=list)
+    debug_map: np.ndarray = None
+
 
 # ShearingForceAlgorithm - measures optical flow
 
@@ -503,9 +508,6 @@ def dispatch_alerts(alert_queue: List[AlertFlag], score: FascialIntegrityScore):
             "retest_in": meta["retest_sec"],
             "hard_block": meta.get("hard_block", False)
         }
-
-from flask import Flask, request, jsonify
-import os
 
 app = Flask(__name__)
 
