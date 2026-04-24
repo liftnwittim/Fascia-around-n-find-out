@@ -31,7 +31,20 @@ class ModuleScore:
     confidence: float = 0.0
     flags: List[Any] = field(default_factory=list)
     debug_map: np.ndarray = None
+@dataclass
+class AlertFlag:
+    code: str = ""
+    region: str = ""
+    severity: str = "MEDIUM"
+    message: str = ""
 
+@dataclass
+class FascialIntegrityScore:
+    score: float = 0.0
+    FEI: float = 0.0
+    tier: str = ""
+    alert_queue: List[Any] = field(default_factory=list)
+    module_breakdown: Dict[str, float] = field(default_factory=dict)
 
 # ShearingForceAlgorithm - measures optical flow
 
