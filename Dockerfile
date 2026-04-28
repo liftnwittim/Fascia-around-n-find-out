@@ -21,4 +21,4 @@ COPY . .
 
 EXPOSE 8080
 
-CMD ["python", "FasciaApp.py"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--timeout", "120", "FasciaApp:app"]
