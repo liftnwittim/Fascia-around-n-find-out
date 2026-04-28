@@ -11,14 +11,7 @@ from flask import Flask, request, jsonify
 os.environ["MEDIAPIPE_DISABLE_GPU"] = "1"
 app = Flask(__name__)
 
-mp_pose = mp.solutions.pose
-pose = mp_pose.Pose(
-    static_image_mode=False,
-    model_complexity=1,
-    min_detection_confidence=0.5,
-    min_tracking_confidence=0.5,
-    enable_segmentation=False
-)
+
 os.environ["MEDIAPIPE_DISABLE_GPU"] = "1"
 from dataclasses import dataclass, field
 from typing import List, Dict, Any
@@ -539,7 +532,17 @@ def analyze():
         file = request.files['frame']
         npimg = np.frombuffer(file.read(), np.uint8)
         frame = cv2.imdecode(npimg, cv2.IMREAD_COLOR)
-
+# Lazy mediapipe init
+if not hasattr(app, 'pose'):
+    try:
+        mp_pose = mp.solutions.pose
+        app.pose = mp_pose.Pose(
+            static_image_mode=True,
+            model_complexity=1,
+            min_detection_confidence=0.5
+        )
+    except Exception:
+        app.pose = None
         if frame is None:
             return jsonify({"error": "Could not decode frame"}), 400
 
