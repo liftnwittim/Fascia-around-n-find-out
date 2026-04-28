@@ -2,4 +2,3 @@ flask
 opencv-python-headless
 numpy
 scipy
-mediapipe==0.10.9
