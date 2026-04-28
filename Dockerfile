@@ -1,7 +1,6 @@
-# rebuild 2026-04-28
 FROM python:3.11-slim
 
-FROM python:3.11-slim
+ENV CACHE_BUST=20260428
 
 RUN apt-get update && apt-get install -y \
     libxcb1 \
@@ -20,6 +19,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-EXPOSE 5000
+EXPOSE 8080
 
 CMD ["python", "FasciaApp.py"]
