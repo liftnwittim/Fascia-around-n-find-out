@@ -8,15 +8,18 @@ import os
 from flask import Flask, request, jsonify
 
 from flask import Flask, request, jsonify
+os.environ["MEDIAPIPE_DISABLE_GPU"] = "1"
 app = Flask(__name__)
 
 mp_pose = mp.solutions.pose
 pose = mp_pose.Pose(
     static_image_mode=False,
-    model_complexity=2,
+    model_complexity=1,
     min_detection_confidence=0.5,
-    min_tracking_confidence=0.5
+    min_tracking_confidence=0.5,
+    enable_segmentation=False
 )
+os.environ["MEDIAPIPE_DISABLE_GPU"] = "1"
 from dataclasses import dataclass, field
 from typing import List, Dict, Any
 
