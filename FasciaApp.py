@@ -3,7 +3,6 @@
 import cv2
 import numpy as np
 from scipy.stats import pearsonr
-import mediapipe as mp
 import os
 from flask import Flask, request, jsonify
 
@@ -532,63 +531,35 @@ def analyze():
         file = request.files['frame']
         npimg = np.frombuffer(file.read(), np.uint8)
         frame = cv2.imdecode(npimg, cv2.IMREAD_COLOR)
-# Lazy mediapipe init
-if not hasattr(app, 'pose'):
-    try:
-        mp_pose = mp.solutions.pose
-        app.pose = mp_pose.Pose(
-            static_image_mode=True,
-            model_complexity=1,
-            min_detection_confidence=0.5
-        )
-    except Exception:
-        app.pose = None
+
         if frame is None:
             return jsonify({"error": "Could not decode frame"}), 400
 
-        # ── M1: Shearing Force ──────────────────────────────────────
         gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
-        # Store previous frame in app state
         prev_frame = getattr(app, 'prev_frame', None)
         app.prev_frame = gray_frame
 
-        shear_score = 0.5  # default until we have two frames
+        shear_score = 0.5
         flags = []
 
         if prev_frame is not None and prev_frame.shape == gray_frame.shape:
-            # Compute dense optical flow between frames
             flow = cv2.calcOpticalFlowFarneback(
                 prev_frame, gray_frame,
-                None,
-                pyr_scale=0.5,
-                levels=3,
-                winsize=15,
-                iterations=3,
-                poly_n=5,
-                poly_sigma=1.2,
-                flags=0
+                None, 0.5, 3, 15, 3, 5, 1.2, 0
             )
-
-            # Compute flow magnitude
             magnitude, _ = cv2.cartToPolar(flow[..., 0], flow[..., 1])
             mean_flow = float(np.mean(magnitude))
-
-            # Normalize to 0-1 score
             BASELINE = 2.0
             shear_score = min(mean_flow / BASELINE, 1.0)
 
-            # Flag if shear drops below 30% of baseline
             if mean_flow < BASELINE * 0.70:
                 flags.append({
                     "code": "FASCIAL_DENSIFICATION",
                     "severity": "HIGH" if mean_flow < BASELINE * 0.50 else "MEDIUM",
-                    "message": "Stagnant fascia detected — potential trigger point zone"
+                    "message": "Stagnant fascia detected"
                 })
 
-        # Scale to 0-100
         score_100 = round(shear_score * 100, 1)
-
         tier = (
             "ELITE"        if score_100 >= 85 else
             "FUNCTIONAL"   if score_100 >= 60 else
@@ -600,8 +571,7 @@ if not hasattr(app, 'pose'):
             "score": score_100,
             "tier": tier,
             "frame_received": True,
-            "flags": flags,
-            "resolution": f"{frame.shape[1]}x{frame.shape[0]}"
+            "flags": flags
         })
 
     except Exception as e:
