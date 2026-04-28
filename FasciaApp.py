@@ -526,14 +526,26 @@ app = Flask(__name__)
 
 @app.route("/analyze", methods=["POST"])
 def analyze():
-    # your pipeline logic here
-    return jsonify({"score": 0, "tier": "pending"})
+    try:
+        if 'frame' not in request.files:
+            return jsonify({"error": "No frame received"}), 400
 
-@app.route("/health", methods=["GET"])
-def health():
-    return jsonify({"status": "ok"})
+        file = request.files['frame']
+        npimg = np.frombuffer(file.read(), np.uint8)
+        frame = cv2.imdecode(npimg, cv2.IMREAD_COLOR)
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+        if frame is None:
+            return jsonify({"error": "Could not decode frame"}), 400
+
+        height, width = frame.shape[:2]
+
+        return jsonify({
+            "score": 0,
+            "tier": "pending",
+            "frame_received": True,
+            "resolution": f"{width}x{height}"
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
