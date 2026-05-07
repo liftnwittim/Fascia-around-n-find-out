@@ -552,33 +552,37 @@ def analyze():
                 None, 0.5, 3, 15, 3, 5, 1.2, 0
             )
             magnitude, _ = cv2.cartToPolar(flow[..., 0], flow[..., 1])
-            mean_flow = float(np.mean(magnitude))
-            BASELINE = 2.0
-            shear_score = min(mean_flow / BASELINE, 1.0)
-
-            if mean_flow < BASELINE * 0.70:
-                flags.append({
-                    "code": "FASCIAL_DENSIFICATION",
-                    "severity": "HIGH" if mean_flow < BASELINE * 0.50 else "MEDIUM",
-                    "message": "Stagnant fascia detected"
-                })
-# ── M2: Foot-to-Glute Chain ────────────────────────────────
-height, width = frame.shape[:2]
-
-# Arch Height Index — estimate from bottom third of frame
-bottom_third = frame[int(height * 0.66):, :]
-gray_bottom = cv2.cvtColor(bottom_third, cv2.COLOR_BGR2GRAY)
-
-# Edge detection to find foot structure
-edges = cv2.Canny(gray_bottom, 50, 150)
-edge_density = float(np.sum(edges > 0)) / edges.size
-
-# ATT visibility — look for vertical ridge in lower leg region
-shin_region = frame[int(height * 0.33):int(height * 0.66), :]
-gray_shin = cv2.cvtColor(shin_region, cv2.COLOR_BGR2GRAY)
-sobel_x = cv2.Sobel(gray_shin, cv2.CV_64F, dx=1, dy=0, ksize=3)
-att_strength = float(np.mean(np.abs(sobel_x)))
-
+        })
+        # ── M2: Foot-to-Glute Chain ────────────────────────────────
+        height, width = frame.shape[:2]
+        # Arch Height Index — estimate from bottom third of frame
+        bottom_third = frame[int(height * 0.66):, :]
+        gray_bottom = cv2.cvtColor(bottom_third, cv2.COLOR_BGR2GRAY)
+        # Edge detection to find foot structure
+        edges = cv2.Canny(gray_bottom, 50, 150)
+        edge_density = float(np.sum(edges > 0)) / edges.size
+        # ATT visibility — look for vertical ridge in lower leg region
+        shin_region = frame[int(height * 0.33):int(height * 0.66), :]
+        gray_shin = cv2.cvtColor(shin_region, cv2.COLOR_BGR2GRAY)
+        sobel_x = cv2.Sobel(gray_shin, cv2.CV_64F, dx=1, dy=0, ksize=3)
+        att_strength = float(np.mean(np.abs(sobel_x)))
+        ATT_THRESHOLD = 12.0
+        EDGE_THRESHOLD = 0.05
+        arch_score = min(edge_density / EDGE_THRESHOLD, 1.0)
+        att_score = min(att_strength / ATT_THRESHOLD, 1.0)
+        foot_glute_score = (arch_score * 0.5) + (att_score * 0.5)
+        if arch_score < 0.5:
+            flags.append({
+                "code": "ARCH_COLLAPSE",
+                "severity": "HIGH",
+                "message": "Arch engagement low — fascial disconnection detected"
+            })
+        if att_score < 0.5:
+            flags.append({
+                "code": "ATT_NOT_ENGAGED",
+                "severity": "MEDIUM",
+                "message": "ATT not prominent — proprioceptive drive from foot compromised"
+            })
 # Normalize both signals
 ATT_THRESHOLD = 12.0
 EDGE_THRESHOLD = 0.05
