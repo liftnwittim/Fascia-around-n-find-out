@@ -539,12 +539,13 @@ def analyze():
         if frame is None:
             return jsonify({"error": "Could not decode frame"}), 400
 
+        flags = []
+
+        # ── M1: Shearing Force ─────────────────────────────────────
         gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         prev_frame = getattr(app, 'prev_frame', None)
         app.prev_frame = gray_frame
-
         shear_score = 0.5
-        flags = []
 
         if prev_frame is not None and prev_frame.shape == gray_frame.shape:
             flow = cv2.calcOpticalFlowFarneback(
@@ -561,15 +562,13 @@ def analyze():
                     "severity": "HIGH" if mean_flow < BASELINE * 0.50 else "MEDIUM",
                     "message": "Stagnant fascia detected"
                 })
+
         # ── M2: Foot-to-Glute Chain ────────────────────────────────
         height, width = frame.shape[:2]
-        # Arch Height Index — estimate from bottom third of frame
         bottom_third = frame[int(height * 0.66):, :]
         gray_bottom = cv2.cvtColor(bottom_third, cv2.COLOR_BGR2GRAY)
-        # Edge detection to find foot structure
         edges = cv2.Canny(gray_bottom, 50, 150)
         edge_density = float(np.sum(edges > 0)) / edges.size
-        # ATT visibility — look for vertical ridge in lower leg region
         shin_region = frame[int(height * 0.33):int(height * 0.66), :]
         gray_shin = cv2.cvtColor(shin_region, cv2.COLOR_BGR2GRAY)
         sobel_x = cv2.Sobel(gray_shin, cv2.CV_64F, dx=1, dy=0, ksize=3)
@@ -579,6 +578,7 @@ def analyze():
         arch_score = min(edge_density / EDGE_THRESHOLD, 1.0)
         att_score = min(att_strength / ATT_THRESHOLD, 1.0)
         foot_glute_score = (arch_score * 0.5) + (att_score * 0.5)
+
         if arch_score < 0.5:
             flags.append({
                 "code": "ARCH_COLLAPSE",
@@ -591,32 +591,10 @@ def analyze():
                 "severity": "MEDIUM",
                 "message": "ATT not prominent — proprioceptive drive from foot compromised"
             })
-# Normalize both signals
-ATT_THRESHOLD = 12.0
-EDGE_THRESHOLD = 0.05
 
-arch_score = min(edge_density / EDGE_THRESHOLD, 1.0)
-att_score = min(att_strength / ATT_THRESHOLD, 1.0)
-
-# Connectivity score
-foot_glute_score = (arch_score * 0.5) + (att_score * 0.5)
-
-# Flag if either signal is weak
-if arch_score < 0.5:
-    flags.append({
-        "code": "ARCH_COLLAPSE",
-        "severity": "HIGH",
-        "message": "Arch engagement low — fascial disconnection detected"
-    })
-if att_score < 0.5:
-    flags.append({
-        "code": "ATT_NOT_ENGAGED",
-        "severity": "MEDIUM",
-        "message": "ATT not prominent — proprioceptive drive from foot compromised"
-    })
         # ── Composite Score (M1 + M2) ──────────────────────────────
-composite = (shear_score * 0.55) + (foot_glute_score * 0.45)
-score_100 = round(composite * 100, 1)
+        composite = (shear_score * 0.55) + (foot_glute_score * 0.45)
+        score_100 = round(composite * 100, 1)
         tier = (
             "ELITE"        if score_100 >= 85 else
             "FUNCTIONAL"   if score_100 >= 60 else
@@ -628,7 +606,8 @@ score_100 = round(composite * 100, 1)
             "score": score_100,
             "tier": tier,
             "frame_received": True,
-            "flags": flags
+            "flags": flags,
+            "resolution": f"{width}x{height}"
         })
 
     except Exception as e:
