@@ -593,21 +593,16 @@ def analyze():
             })
 
         # ── M3: Movement Bandwidth ─────────────────────────────────
-        # Track upper and lower body motion separately using
-        # optical flow in top and bottom halves of frame
         upper_half = gray_frame[:height//2, :]
         lower_half = gray_frame[height//2:, :]
-
         tensegrity_score = 0.5
         lag_ms = 0.0
-
         prev_upper = getattr(app, 'prev_upper', None)
         prev_lower = getattr(app, 'prev_lower', None)
         app.prev_upper = upper_half
         app.prev_lower = lower_half
 
         if prev_upper is not None and prev_lower is not None:
-            # Compute flow for upper and lower independently
             flow_upper = cv2.calcOpticalFlowFarneback(
                 prev_upper, upper_half,
                 None, 0.5, 3, 15, 3, 5, 1.2, 0
@@ -616,53 +611,98 @@ def analyze():
                 prev_lower, lower_half,
                 None, 0.5, 3, 15, 3, 5, 1.2, 0
             )
-
-            # Mean horizontal flow in each half (rotation proxy)
             upper_rot = float(np.mean(flow_upper[..., 0]))
             lower_rot = float(np.mean(flow_lower[..., 0]))
-
-            # Store rotation history
             upper_history = getattr(app, 'upper_history', [])
             lower_history = getattr(app, 'lower_history', [])
             upper_history.append(upper_rot)
             lower_history.append(lower_rot)
-
-            # Keep last 30 frames
             app.upper_history = upper_history[-30:]
             app.lower_history = lower_history[-30:]
 
             if len(upper_history) >= 5:
                 u = np.array(upper_history)
                 l = np.array(lower_history)
-
-                # Amplitude ratio — elite tensegrity = similar ROM top/bottom
                 upper_ROM = float(np.max(u) - np.min(u))
                 lower_ROM = float(np.max(l) - np.min(l))
                 amp_ratio = min(upper_ROM, lower_ROM) / (max(upper_ROM, lower_ROM) + 1e-6)
-
-                # Correlation — high = moving together = integrated fascia
                 if len(u) > 2:
                     correlation = float(np.corrcoef(u, l)[0, 1])
                     correlation = max(correlation, 0)
                 else:
                     correlation = 0.5
-
                 tensegrity_score = (amp_ratio * 0.5) + (correlation * 0.5)
-
                 if correlation < 0.4:
                     lag_ms = 100.0
                     flags.append({
                         "code": "SEGMENTED_MOVEMENT",
                         "severity": "HIGH" if correlation < 0.2 else "MEDIUM",
-                        "message": f"Upper/lower body desynchronized — poor elastic recoil"
+                        "message": "Upper/lower body desynchronized — poor elastic recoil"
                     })
 
-        # ── Composite Score (M1 + M2 + M3) ────────────────────────
+        # ── M4: Hydraulic / Thermal ────────────────────────────────
+        # Track red channel mean over time as warmup proxy
+        # More red = more blood flow = hyaluronic acid thinning = fascia mobile
+        skin_region = frame[int(height * 0.10):int(height * 0.40), :]
+        red_channel = skin_region[:, :, 2]
+        mean_red = float(np.mean(red_channel))
+
+        red_history = getattr(app, 'red_history', [])
+        red_history.append(mean_red)
+        app.red_history = red_history[-60:]
+
+        hydro_score = 0.5
+        warmup_adequate = True
+
+        if len(red_history) >= 4:
+            red_start = float(np.mean(red_history[:2]))
+            red_end = float(np.mean(red_history[-2:]))
+            delta = red_end - red_start
+            pct_change = delta / (red_start + 1e-6)
+
+            # Texture entropy shift — warm fascia = richer micro-movement
+            texture_history = getattr(app, 'texture_history', [])
+            entropy = float(np.std(gray_frame))
+            texture_history.append(entropy)
+            app.texture_history = texture_history[-60:]
+
+            entropy_delta = 0.0
+            if len(texture_history) >= 4:
+                entropy_delta = float(np.mean(texture_history[-2:])) - float(np.mean(texture_history[:2]))
+
+            COLOR_THRESHOLD = 0.03
+            ENTROPY_THRESHOLD = 0.5
+
+            warmup_adequate = (pct_change > COLOR_THRESHOLD) or (entropy_delta > ENTROPY_THRESHOLD)
+
+            hydro_score = (
+                min(pct_change / 0.10, 1.0) * 0.60 +
+                min(abs(entropy_delta) / 5.0, 1.0) * 0.40
+            )
+            hydro_score = max(hydro_score, 0.0)
+            hydro_score = min(hydro_score, 1.0)
+        else:
+            app.texture_history = []
+
+        if not warmup_adequate:
+            flags.append({
+                "code": "VISCOSITY_LOCK",
+                "severity": "HIGH",
+                "message": "Hydraulic system still viscous — do NOT attempt explosive loading"
+            })
+
+        # ── Composite Score (M1 + M2 + M3 + M4) ───────────────────
         composite = (
-            shear_score      * 0.35 +
-            foot_glute_score * 0.30 +
-            tensegrity_score * 0.35
+            shear_score      * 0.28 +
+            foot_glute_score * 0.24 +
+            tensegrity_score * 0.28 +
+            hydro_score      * 0.20
         )
+
+        # Hydraulic gate — if M4 < 0.30 cap total at 45
+        if hydro_score < 0.30:
+            composite = min(composite, 0.45)
+
         score_100 = round(composite * 100, 1)
         tier = (
             "ELITE"        if score_100 >= 85 else
@@ -681,6 +721,8 @@ def analyze():
                 "m1_shear": round(shear_score * 100, 1),
                 "m2_foot_glute": round(foot_glute_score * 100, 1),
                 "m3_tensegrity": round(tensegrity_score * 100, 1),
+                "m4_hydro": round(hydro_score * 100, 1),
+                "warmup_adequate": warmup_adequate,
                 "lag_ms": lag_ms
             }
         })
