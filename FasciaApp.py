@@ -552,7 +552,15 @@ def analyze():
                 None, 0.5, 3, 15, 3, 5, 1.2, 0
             )
             magnitude, _ = cv2.cartToPolar(flow[..., 0], flow[..., 1])
-        })
+            mean_flow = float(np.mean(magnitude))
+            BASELINE = 2.0
+            shear_score = min(mean_flow / BASELINE, 1.0)
+            if mean_flow < BASELINE * 0.70:
+                flags.append({
+                    "code": "FASCIAL_DENSIFICATION",
+                    "severity": "HIGH" if mean_flow < BASELINE * 0.50 else "MEDIUM",
+                    "message": "Stagnant fascia detected"
+                })
         # ── M2: Foot-to-Glute Chain ────────────────────────────────
         height, width = frame.shape[:2]
         # Arch Height Index — estimate from bottom third of frame
