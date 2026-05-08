@@ -540,6 +540,7 @@ def analyze():
             return jsonify({"error": "Could not decode frame"}), 400
 
         flags = []
+        height, width = frame.shape[:2]
 
         # ── M1: Shearing Force ─────────────────────────────────────
         gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -547,20 +548,23 @@ def analyze():
         app.prev_frame = gray_frame
         shear_score = 0.5
 
-        prev_frame_m5 = getattr(app, 'prev_frame_m5', None)
-        app.prev_frame_m5 = gray_frame
-
-        if prev_frame_m5 is not None and prev_frame_m5.shape == gray_frame.shape:
-            flow_full = cv2.calcOpticalFlowFarneback(
-                prev_frame_m5, gray_frame,
+        if prev_frame is not None and prev_frame.shape == gray_frame.shape:
+            flow = cv2.calcOpticalFlowFarneback(
+                prev_frame, gray_frame,
                 None, 0.5, 3, 15, 3, 5, 1.2, 0
             )
-            mag_full, _ = cv2.cartToPolar(flow_full[..., 0], flow_full[..., 1])
+            magnitude, _ = cv2.cartToPolar(flow[..., 0], flow[..., 1])
+            mean_flow = float(np.mean(magnitude))
+            BASELINE = 2.0
+            shear_score = min(mean_flow / BASELINE, 1.0)
+            if mean_flow < BASELINE * 0.70:
+                flags.append({
+                    "code": "FASCIAL_DENSIFICATION",
+                    "severity": "HIGH" if mean_flow < BASELINE * 0.50 else "MEDIUM",
                     "message": "Stagnant fascia detected"
                 })
 
         # ── M2: Foot-to-Glute Chain ────────────────────────────────
-        height, width = frame.shape[:2]
         bottom_third = frame[int(height * 0.66):, :]
         gray_bottom = cv2.cvtColor(bottom_third, cv2.COLOR_BGR2GRAY)
         edges = cv2.Canny(gray_bottom, 50, 150)
@@ -637,16 +641,12 @@ def analyze():
                     })
 
         # ── M4: Hydraulic / Thermal ────────────────────────────────
-        # Track red channel mean over time as warmup proxy
-        # More red = more blood flow = hyaluronic acid thinning = fascia mobile
         skin_region = frame[int(height * 0.10):int(height * 0.40), :]
         red_channel = skin_region[:, :, 2]
         mean_red = float(np.mean(red_channel))
-
         red_history = getattr(app, 'red_history', [])
         red_history.append(mean_red)
         app.red_history = red_history[-60:]
-
         hydro_score = 0.5
         warmup_adequate = True
 
@@ -655,28 +655,21 @@ def analyze():
             red_end = float(np.mean(red_history[-2:]))
             delta = red_end - red_start
             pct_change = delta / (red_start + 1e-6)
-
-            # Texture entropy shift — warm fascia = richer micro-movement
             texture_history = getattr(app, 'texture_history', [])
             entropy = float(np.std(gray_frame))
             texture_history.append(entropy)
             app.texture_history = texture_history[-60:]
-
             entropy_delta = 0.0
             if len(texture_history) >= 4:
                 entropy_delta = float(np.mean(texture_history[-2:])) - float(np.mean(texture_history[:2]))
-
             COLOR_THRESHOLD = 0.03
             ENTROPY_THRESHOLD = 0.5
-
             warmup_adequate = (pct_change > COLOR_THRESHOLD) or (entropy_delta > ENTROPY_THRESHOLD)
-
             hydro_score = (
                 min(pct_change / 0.10, 1.0) * 0.60 +
                 min(abs(entropy_delta) / 5.0, 1.0) * 0.40
             )
-            hydro_score = max(hydro_score, 0.0)
-            hydro_score = min(hydro_score, 1.0)
+            hydro_score = max(min(hydro_score, 1.0), 0.0)
         else:
             app.texture_history = []
 
@@ -687,15 +680,78 @@ def analyze():
                 "message": "Hydraulic system still viscous — do NOT attempt explosive loading"
             })
 
-        # ── Composite Score (M1 + M2 + M3 + M4) ───────────────────
+        # ── M5: Stability Map ──────────────────────────────────────
+        stability_score = 0.5
+        spike_count = 0
+        prev_frame_m5 = getattr(app, 'prev_frame_m5', None)
+        app.prev_frame_m5 = gray_frame
+
+        if prev_frame_m5 is not None and prev_frame_m5.shape == gray_frame.shape:
+            flow_full = cv2.calcOpticalFlowFarneback(
+                prev_frame_m5, gray_frame,
+                None, 0.5, 3, 15, 3, 5, 1.2, 0
+            )
+            mag_full, _ = cv2.cartToPolar(flow_full[..., 0], flow_full[..., 1])
+            total_motion = float(np.sum(mag_full))
+
+            if total_motion > 0:
+                y_coords, x_coords = np.mgrid[0:height, 0:width]
+                com_x = float(np.sum(x_coords * mag_full) / total_motion)
+                com_y = float(np.sum(y_coords * mag_full) / total_motion)
+            else:
+                com_x = width / 2.0
+                com_y = height / 2.0
+
+            norm_x = com_x / width
+            norm_y = com_y / height
+            com_history = getattr(app, 'com_history', [])
+            com_history.append((norm_x, norm_y))
+            app.com_history = com_history[-30:]
+
+            if len(com_history) >= 3:
+                xs = np.array([c[0] for c in com_history])
+                ys = np.array([c[1] for c in com_history])
+                acc_x = np.diff(np.diff(xs))
+                acc_y = np.diff(np.diff(ys))
+                acc_mag = np.sqrt(acc_x**2 + acc_y**2)
+                var_x = float(np.var(acc_x)) if len(acc_x) > 0 else 0
+                var_y = float(np.var(acc_y)) if len(acc_y) > 0 else 0
+                dispersion = min(var_x, var_y) / (max(var_x, var_y) + 1e-6)
+
+                if len(acc_mag) > 0:
+                    mean_acc = float(np.mean(acc_mag))
+                    std_acc = float(np.std(acc_mag))
+                    spike_mask = acc_mag > (mean_acc + 3.5 * std_acc)
+                    spike_count = int(np.sum(spike_mask))
+
+                stability_score = (
+                    dispersion * 0.60 +
+                    (1.0 / (spike_count + 1)) * 0.40
+                )
+                stability_score = max(min(stability_score, 1.0), 0.0)
+
+                if spike_count > 3:
+                    flags.append({
+                        "code": "FORCE_CONCENTRATION",
+                        "severity": "HIGH",
+                        "message": f"Force concentrated — {spike_count} CoM spikes detected"
+                    })
+                if dispersion < 0.25:
+                    flags.append({
+                        "code": "SINGLE_AXIS_LOADING",
+                        "severity": "MEDIUM",
+                        "message": "Uniplanar compensation — frontal/transverse plane blind spots"
+                    })
+
+        # ── Composite Score (M1 + M2 + M3 + M4 + M5) ──────────────
         composite = (
-            shear_score      * 0.28 +
-            foot_glute_score * 0.24 +
-            tensegrity_score * 0.28 +
-            hydro_score      * 0.20
+            shear_score      * 0.25 +
+            foot_glute_score * 0.20 +
+            tensegrity_score * 0.25 +
+            hydro_score      * 0.15 +
+            stability_score  * 0.15
         )
 
-        # Hydraulic gate — if M4 < 0.30 cap total at 45
         if hydro_score < 0.30:
             composite = min(composite, 0.45)
 
@@ -718,7 +774,9 @@ def analyze():
                 "m2_foot_glute": round(foot_glute_score * 100, 1),
                 "m3_tensegrity": round(tensegrity_score * 100, 1),
                 "m4_hydro": round(hydro_score * 100, 1),
+                "m5_stability": round(stability_score * 100, 1),
                 "warmup_adequate": warmup_adequate,
+                "spike_count": spike_count,
                 "lag_ms": lag_ms
             }
         })
