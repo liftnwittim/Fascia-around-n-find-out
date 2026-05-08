@@ -547,9 +547,12 @@ def analyze():
         app.prev_frame = gray_frame
         shear_score = 0.5
 
-        if prev_frame is not None and prev_frame.shape == gray_frame.shape:
-            flow = cv2.calcOpticalFlowFarneback(
-                prev_frame, gray_frame,
+        prev_frame_m5 = getattr(app, 'prev_frame_m5', None)
+        app.prev_frame_m5 = gray_frame
+
+        if prev_frame_m5 is not None and prev_frame_m5.shape == gray_frame.shape:
+           flow_full = cv2.calcOpticalFlowFarneback(
+            prev_frame_m5, gray_frame,
                 None, 0.5, 3, 15, 3, 5, 1.2, 0
             )
             magnitude, _ = cv2.cartToPolar(flow[..., 0], flow[..., 1])
