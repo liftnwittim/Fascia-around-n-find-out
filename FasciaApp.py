@@ -717,7 +717,7 @@ def analyze():
                 var_x = float(np.var(acc_x)) if len(acc_x) > 0 else 0
                 var_y = float(np.var(acc_y)) if len(acc_y) > 0 else 0
                 dispersion = min(var_x, var_y) / (max(var_x, var_y) + 1e-6)
-
+                dispersion = min(dispersion * 2.0, 1.0)
                 if len(acc_mag) > 0:
                     mean_acc = float(np.mean(acc_mag))
                     std_acc = float(np.std(acc_mag))
