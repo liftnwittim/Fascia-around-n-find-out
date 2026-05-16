@@ -632,7 +632,7 @@ def analyze():
                 else:
                     correlation = 0.5
                 tensegrity_score = (amp_ratio * 0.5) + (correlation * 0.5)
-                if correlation < 0.4:
+                if correlation < 0.5:
                     lag_ms = 100.0
                     flags.append({
                         "code": "SEGMENTED_MOVEMENT",
