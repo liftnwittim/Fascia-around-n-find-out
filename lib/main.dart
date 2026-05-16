@@ -59,61 +59,68 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _analyze() async {
-    if (_isAnalyzing) return;
-    setState(() => _isAnalyzing = true);
+  if (_isAnalyzing) return;
+  setState(() => _isAnalyzing = true);
 
-    try {
-      final image = await _controller.takePicture();
-      final bytes = await image.readAsBytes();
-
-      final request = http.MultipartRequest(
-        'POST',
-        Uri.parse('$backendUrl/analyze'),
-      );
-
-      request.files.add(
-        http.MultipartFile.fromBytes(
-          'frame',
-          bytes,
-          filename: 'frame.jpg',
-        ),
-      );
-
-      final response = await request.send();
-      final responseBody = await response.stream.bytesToString();
-      final data = jsonDecode(responseBody);
-
-      setState(() {
-        _score = (data['score'] ?? 0).toString();
-        _tier = (data['tier'] ?? 'unknown').toString();
-      });
-
-      if (data['frame_received'] == true) {
-        print('Resolution: ${data['resolution']}');
-        final debug = data['debug'];
-        if (debug != null) {
-          print('M1 Shear: ${debug['m1_shear']}');
-          print('M2 Foot-Glute: ${debug['m2_foot_glute']}');
-          print('M3 Tensegrity: ${debug['m3_tensegrity']}');
-print('M4 Hydro: ${debug['m4_hydro']}');
-print('M5 Stability: ${debug['m5_stability']}');
-print('Warmup adequate: ${debug['warmup_adequate']}');
-print('Spike count: ${debug['spike_count']}');
-print('Lag ms: ${debug['lag_ms']}');
-        }
-        if (data['flags'] != null && data['flags'].isNotEmpty) {
-          print('FLAGS: ${data['flags']}');
-        }
-      }
-    } catch (e) {
-      setState(() {
-        _score = 'Error';
-        _tier = e.toString();
-      });
-    }
-
-    setState(() => _isAnalyzing = false);
+  // Countdown sequence
+  for (int i = 3; i > 0; i--) {
+    setState(() => _tier = '$i...');
+    await Future.delayed(const Duration(seconds: 1));
   }
+  setState(() => _tier = 'Analyzing...');
+
+  try {
+    final image = await _controller.takePicture();
+    final bytes = await image.readAsBytes();
+
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$backendUrl/analyze'),
+    );
+
+    request.files.add(
+      http.MultipartFile.fromBytes(
+        'frame',
+        bytes,
+        filename: 'frame.jpg',
+      ),
+    );
+
+    final response = await request.send();
+    final responseBody = await response.stream.bytesToString();
+    final data = jsonDecode(responseBody);
+
+    setState(() {
+      _score = (data['score'] ?? 0).toString();
+      _tier = (data['tier'] ?? 'unknown').toString();
+    });
+
+    if (data['frame_received'] == true) {
+      print('Resolution: ${data['resolution']}');
+      final debug = data['debug'];
+      if (debug != null) {
+        print('M1 Shear: ${debug['m1_shear']}');
+        print('M2 Foot-Glute: ${debug['m2_foot_glute']}');
+        print('M3 Tensegrity: ${debug['m3_tensegrity']}');
+        print('M4 Hydro: ${debug['m4_hydro']}');
+        print('M5 Stability: ${debug['m5_stability']}');
+        print('Warmup adequate: ${debug['warmup_adequate']}');
+        print('Spike count: ${debug['spike_count']}');
+        print('Lag ms: ${debug['lag_ms']}');
+      }
+      if (data['flags'] != null && data['flags'].isNotEmpty) {
+        print('FLAGS: ${data['flags']}');
+      }
+    }
+  } catch (e) {
+    setState(() {
+      _score = 'Error';
+      _tier = e.toString();
+    });
+  }
+
+  setState(() => _isAnalyzing = false);
+}
 
   @override
   void dispose() {
