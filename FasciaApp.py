@@ -144,7 +144,7 @@ def foot_glute_chain(packet: FramePacket) -> ModuleScore:
     col_range = get_att_column(packet.skeleton)   # x-range based on landmarks
     att_ridge_strength = np.mean(np.abs(edges[:, col_range]))
 
-    ATT_THRESHOLD = 8.0     # calibrated gradient magnitude units
+    ATT_THRESHOLD = 5.0     # calibrated gradient magnitude units
     att_visible   = att_ridge_strength > ATT_THRESHOLD
 
     # ── 3. Glute activation proxy ───────────────────────────────────
