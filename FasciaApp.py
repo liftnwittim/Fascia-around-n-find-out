@@ -574,7 +574,7 @@ def analyze():
         sobel_x = cv2.Sobel(gray_shin, cv2.CV_64F, dx=1, dy=0, ksize=3)
         att_strength = float(np.mean(np.abs(sobel_x)))
         ATT_THRESHOLD = 12.0
-        EDGE_THRESHOLD = 0.05
+        EDGE_THRESHOLD = 0.20
         arch_score = min(edge_density / EDGE_THRESHOLD, 1.0)
         att_score = min(att_strength / ATT_THRESHOLD, 1.0)
         foot_glute_score = (arch_score * 0.5) + (att_score * 0.5)
