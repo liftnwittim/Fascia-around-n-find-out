@@ -144,7 +144,7 @@ def foot_glute_chain(packet: FramePacket) -> ModuleScore:
     col_range = get_att_column(packet.skeleton)   # x-range based on landmarks
     att_ridge_strength = np.mean(np.abs(edges[:, col_range]))
 
-    ATT_THRESHOLD = 12.0     # calibrated gradient magnitude units
+    ATT_THRESHOLD = 8.0     # calibrated gradient magnitude units
     att_visible   = att_ridge_strength > ATT_THRESHOLD
 
     # ── 3. Glute activation proxy ───────────────────────────────────
@@ -574,7 +574,7 @@ def analyze():
         sobel_x = cv2.Sobel(gray_shin, cv2.CV_64F, dx=1, dy=0, ksize=3)
         att_strength = float(np.mean(np.abs(sobel_x)))
         ATT_THRESHOLD = 12.0
-        EDGE_THRESHOLD = 0.50
+        EDGE_THRESHOLD = 0.35
         arch_score = min(edge_density / EDGE_THRESHOLD, 1.0)
         att_score = min(att_strength / ATT_THRESHOLD, 1.0)
         foot_glute_score = (arch_score * 0.35) + (att_score * 0.65)
