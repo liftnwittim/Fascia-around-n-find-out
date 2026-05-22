@@ -567,22 +567,30 @@ def analyze():
         # ── M2: Foot-to-Glute Chain ────────────────────────────────
         bottom_third = frame[int(height * 0.66):, :]
         gray_bottom = cv2.cvtColor(bottom_third, cv2.COLOR_BGR2GRAY)
-        edges = cv2.Canny(gray_bottom, 50, 150)
-        edge_density = float(np.sum(edges > 0)) / edges.size
+        edges_bottom = cv2.Canny(gray_bottom, 50, 150)
+        edge_density_bottom = float(np.sum(edges_bottom > 0)) / edges_bottom.size
+
         shin_region = frame[int(height * 0.33):int(height * 0.66), :]
         gray_shin = cv2.cvtColor(shin_region, cv2.COLOR_BGR2GRAY)
+        edges_shin = cv2.Canny(gray_shin, 50, 150)
+        edge_density_shin = float(np.sum(edges_shin > 0)) / edges_shin.size
+
         sobel_x = cv2.Sobel(gray_shin, cv2.CV_64F, dx=1, dy=0, ksize=3)
         att_strength = float(np.mean(np.abs(sobel_x)))
-        ATT_THRESHOLD = 12.0
-        EDGE_THRESHOLD = 0.35
-        # High edge density in collapsed arch = bad signal
-        # We want moderate edge density indicating active arch structure
-        arch_score = 1.0 - abs(edge_density - EDGE_THRESHOLD) / EDGE_THRESHOLD
-        arch_score = max(min(arch_score, 1.0), 0.0)
-        att_score = min(att_strength / ATT_THRESHOLD, 1.0)
-        foot_glute_score = (arch_score * 0.35) + (att_score * 0.65)
 
-        if arch_score < 0.5:
+        ATT_THRESHOLD = 8.0
+        EDGE_THRESHOLD = 0.35
+
+        # Ratio of shin to foot edge density
+        # Engaged arch = more shin structure relative to foot
+        ratio = edge_density_shin / (edge_density_bottom + 1e-6)
+        ratio_score = min(ratio / 1.5, 1.0)
+
+        att_score = min(att_strength / ATT_THRESHOLD, 1.0)
+
+        foot_glute_score = (ratio_score * 0.60) + (att_score * 0.40)
+
+        if ratio_score < 0.4:
             flags.append({
                 "code": "ARCH_COLLAPSE",
                 "severity": "HIGH",
@@ -594,7 +602,6 @@ def analyze():
                 "severity": "MEDIUM",
                 "message": "ATT not prominent — proprioceptive drive from foot compromised"
             })
-
         # ── M3: Movement Bandwidth ─────────────────────────────────
         upper_half = gray_frame[:height//2, :]
         lower_half = gray_frame[height//2:, :]
