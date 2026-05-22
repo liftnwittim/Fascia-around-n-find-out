@@ -727,7 +727,9 @@ def analyze():
                 stability_score = (
                 dispersion * 0.60 +
                 (1.0 / (spike_count + 1)) * 0.40
+                )
                 stability_score = max(min(stability_score, 1.0), 0.0)
+                
 
                 # Smooth stability score with EMA
                 prev_stability = getattr(app, 'prev_stability', 0.5)
