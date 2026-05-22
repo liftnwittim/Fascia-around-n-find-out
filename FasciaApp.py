@@ -565,43 +565,21 @@ def analyze():
                 })
 
         # ── M2: Foot-to-Glute Chain ────────────────────────────────
-        bottom_third = frame[int(height * 0.66):, :]
-        gray_bottom = cv2.cvtColor(bottom_third, cv2.COLOR_BGR2GRAY)
-        edges_bottom = cv2.Canny(gray_bottom, 50, 150)
-        edge_density_bottom = float(np.sum(edges_bottom > 0)) / edges_bottom.size
+        # Use arch engagement signal from request if provided
+        # Default to neutral 0.6 if not supplied
+        arch_engaged = request.form.get('arch_engaged', 'neutral')
 
-        shin_region = frame[int(height * 0.33):int(height * 0.66), :]
-        gray_shin = cv2.cvtColor(shin_region, cv2.COLOR_BGR2GRAY)
-        edges_shin = cv2.Canny(gray_shin, 50, 150)
-        edge_density_shin = float(np.sum(edges_shin > 0)) / edges_shin.size
-
-        sobel_x = cv2.Sobel(gray_shin, cv2.CV_64F, dx=1, dy=0, ksize=3)
-        att_strength = float(np.mean(np.abs(sobel_x)))
-
-        ATT_THRESHOLD = 8.0
-        EDGE_THRESHOLD = 0.35
-
-        # Ratio of shin to foot edge density
-        # Engaged arch = more shin structure relative to foot
-        ratio = edge_density_shin / (edge_density_bottom + 1e-6)
-        ratio_score = min(ratio / 1.5, 1.0)
-
-        att_score = min(att_strength / ATT_THRESHOLD, 1.0)
-
-        foot_glute_score = (ratio_score * 0.60) + (att_score * 0.40)
-
-        if ratio_score < 0.4:
+        if arch_engaged == 'true':
+            foot_glute_score = 0.85
+        elif arch_engaged == 'false':
+            foot_glute_score = 0.30
             flags.append({
                 "code": "ARCH_COLLAPSE",
                 "severity": "HIGH",
                 "message": "Arch engagement low — fascial disconnection detected"
             })
-        if att_score < 0.5:
-            flags.append({
-                "code": "ATT_NOT_ENGAGED",
-                "severity": "MEDIUM",
-                "message": "ATT not prominent — proprioceptive drive from foot compromised"
-            })
+        else:
+            foot_glute_score = 0.60
         # ── M3: Movement Bandwidth ─────────────────────────────────
         upper_half = gray_frame[:height//2, :]
         lower_half = gray_frame[height//2:, :]
