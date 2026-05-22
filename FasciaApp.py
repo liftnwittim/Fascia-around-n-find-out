@@ -727,13 +727,12 @@ def analyze():
                 stability_score = (
                 dispersion * 0.60 +
                 (1.0 / (spike_count + 1)) * 0.40
-                )
                 stability_score = max(min(stability_score, 1.0), 0.0)
 
-            # Smooth stability score with EMA
-            prev_stability = getattr(app, 'prev_stability', 0.5)
-            stability_score = 0.3 * stability_score + 0.7 * prev_stability
-            app.prev_stability = stability_score
+                # Smooth stability score with EMA
+                prev_stability = getattr(app, 'prev_stability', 0.5)
+                stability_score = 0.3 * stability_score + 0.7 * prev_stability
+                app.prev_stability = stability_score
 
                 if spike_count > 3:
                     flags.append({
@@ -747,7 +746,6 @@ def analyze():
                         "severity": "MEDIUM",
                         "message": "Uniplanar compensation — frontal/transverse plane blind spots"
                     })
-
         # ── Composite Score (M1 + M2 + M3 + M4 + M5) ──────────────
         composite = (
             shear_score      * 0.25 +
