@@ -717,7 +717,7 @@ def analyze():
                 var_x = float(np.var(acc_x)) if len(acc_x) > 0 else 0
                 var_y = float(np.var(acc_y)) if len(acc_y) > 0 else 0
                 dispersion = min(var_x, var_y) / (max(var_x, var_y) + 1e-6)
-                dispersion = min(dispersion * 5.0, 1.0)
+                dispersion = min(dispersion * 3.0, 1.0)
                 if len(acc_mag) > 0:
                     mean_acc = float(np.mean(acc_mag))
                     std_acc = float(np.std(acc_mag))
@@ -725,10 +725,15 @@ def analyze():
                     spike_count = int(np.sum(spike_mask))
 
                 stability_score = (
-                    dispersion * 0.60 +
-                    (1.0 / (spike_count + 1)) * 0.40
+                dispersion * 0.60 +
+                (1.0 / (spike_count + 1)) * 0.40
                 )
                 stability_score = max(min(stability_score, 1.0), 0.0)
+
+            # Smooth stability score with EMA
+            prev_stability = getattr(app, 'prev_stability', 0.5)
+            stability_score = 0.3 * stability_score + 0.7 * prev_stability
+            app.prev_stability = stability_score
 
                 if spike_count > 3:
                     flags.append({
