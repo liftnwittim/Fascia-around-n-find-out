@@ -575,7 +575,10 @@ def analyze():
         att_strength = float(np.mean(np.abs(sobel_x)))
         ATT_THRESHOLD = 12.0
         EDGE_THRESHOLD = 0.35
-        arch_score = min(edge_density / EDGE_THRESHOLD, 1.0)
+        # High edge density in collapsed arch = bad signal
+        # We want moderate edge density indicating active arch structure
+        arch_score = 1.0 - abs(edge_density - EDGE_THRESHOLD) / EDGE_THRESHOLD
+        arch_score = max(min(arch_score, 1.0), 0.0)
         att_score = min(att_strength / ATT_THRESHOLD, 1.0)
         foot_glute_score = (arch_score * 0.35) + (att_score * 0.65)
 
