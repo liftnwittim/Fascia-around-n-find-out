@@ -259,7 +259,7 @@ def hydraulic_thermal(packet: FramePacket) -> ModuleScore:
 
     flags = []
 
-    # ── 1. Skin color shift as temperature proxy ────────────────────
+    # ── 1. Skin  shift as temperature proxy ────────────────────
     # Compare red-channel mean of exposed skin (arms, neck, face) at
     # t=0 vs t=N (after warmup window). More red = more blood flow
     # = hyaluronic acid thinning = fascia becoming more mobile.
@@ -288,8 +288,8 @@ def hydraulic_thermal(packet: FramePacket) -> ModuleScore:
     entropy_delta = texture_end - texture_start
 
     # ── 3. Score ───────────────────────────────────────────────────
-    COLOR_THRESHOLD  = 0.03    # 3% red-channel increase = minimal adequate warmup
-    ENTROPY_THRESHOLD = 0.05
+    COLOR_THRESHOLD  = 0.15    # 3% red-channel increase = minimal adequate warmup
+    ENTROPY_THRESHOLD = 2.0
 
     warmup_adequate = (pct_change > COLOR_THRESHOLD) and (entropy_delta > ENTROPY_THRESHOLD)
 
@@ -654,8 +654,8 @@ def analyze():
             ENTROPY_THRESHOLD = 0.5
             warmup_adequate = (pct_change > COLOR_THRESHOLD) or (entropy_delta > ENTROPY_THRESHOLD)
             hydro_score = (
-                min(pct_change / 0.10, 1.0) * 0.60 +
-                min(abs(entropy_delta) / 5.0, 1.0) * 0.40
+                min(pct_change / 0.20, 1.0) * 0.60 +
+                min(abs(entropy_delta) / 10.0, 1.0) * 0.40
             )
             hydro_score = max(min(hydro_score, 1.0), 0.0)
         else:
