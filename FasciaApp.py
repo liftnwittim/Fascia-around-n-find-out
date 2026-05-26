@@ -144,7 +144,7 @@ def foot_glute_chain(packet: FramePacket) -> ModuleScore:
     col_range = get_att_column(packet.skeleton)   # x-range based on landmarks
     att_ridge_strength = np.mean(np.abs(edges[:, col_range]))
 
-    ATT_THRESHOLD = 12.0     # calibrated gradient magnitude units
+    ATT_THRESHOLD = 5.0     # calibrated gradient magnitude units
     att_visible   = att_ridge_strength > ATT_THRESHOLD
 
     # ── 3. Glute activation proxy ───────────────────────────────────
@@ -259,7 +259,7 @@ def hydraulic_thermal(packet: FramePacket) -> ModuleScore:
 
     flags = []
 
-    # ── 1. Skin color shift as temperature proxy ────────────────────
+    # ── 1. Skin  shift as temperature proxy ────────────────────
     # Compare red-channel mean of exposed skin (arms, neck, face) at
     # t=0 vs t=N (after warmup window). More red = more blood flow
     # = hyaluronic acid thinning = fascia becoming more mobile.
@@ -288,8 +288,8 @@ def hydraulic_thermal(packet: FramePacket) -> ModuleScore:
     entropy_delta = texture_end - texture_start
 
     # ── 3. Score ───────────────────────────────────────────────────
-    COLOR_THRESHOLD  = 0.03    # 3% red-channel increase = minimal adequate warmup
-    ENTROPY_THRESHOLD = 0.05
+    COLOR_THRESHOLD  = 0.15    # 3% red-channel increase = minimal adequate warmup
+    ENTROPY_THRESHOLD = 2.0
 
     warmup_adequate = (pct_change > COLOR_THRESHOLD) and (entropy_delta > ENTROPY_THRESHOLD)
 
@@ -555,7 +555,7 @@ def analyze():
             )
             magnitude, _ = cv2.cartToPolar(flow[..., 0], flow[..., 1])
             mean_flow = float(np.mean(magnitude))
-            BASELINE = 2.0
+            BASELINE = 12.0
             shear_score = min(mean_flow / BASELINE, 1.0)
             if mean_flow < BASELINE * 0.70:
                 flags.append({
@@ -565,33 +565,21 @@ def analyze():
                 })
 
         # ── M2: Foot-to-Glute Chain ────────────────────────────────
-        bottom_third = frame[int(height * 0.66):, :]
-        gray_bottom = cv2.cvtColor(bottom_third, cv2.COLOR_BGR2GRAY)
-        edges = cv2.Canny(gray_bottom, 50, 150)
-        edge_density = float(np.sum(edges > 0)) / edges.size
-        shin_region = frame[int(height * 0.33):int(height * 0.66), :]
-        gray_shin = cv2.cvtColor(shin_region, cv2.COLOR_BGR2GRAY)
-        sobel_x = cv2.Sobel(gray_shin, cv2.CV_64F, dx=1, dy=0, ksize=3)
-        att_strength = float(np.mean(np.abs(sobel_x)))
-        ATT_THRESHOLD = 12.0
-        EDGE_THRESHOLD = 0.05
-        arch_score = min(edge_density / EDGE_THRESHOLD, 1.0)
-        att_score = min(att_strength / ATT_THRESHOLD, 1.0)
-        foot_glute_score = (arch_score * 0.5) + (att_score * 0.5)
+        # Use arch engagement signal from request if provided
+        # Default to neutral 0.6 if not supplied
+        arch_engaged = request.form.get('arch_engaged', 'neutral')
 
-        if arch_score < 0.5:
+        if arch_engaged == 'true':
+            foot_glute_score = 0.85
+        elif arch_engaged == 'false':
+            foot_glute_score = 0.30
             flags.append({
                 "code": "ARCH_COLLAPSE",
                 "severity": "HIGH",
                 "message": "Arch engagement low — fascial disconnection detected"
             })
-        if att_score < 0.5:
-            flags.append({
-                "code": "ATT_NOT_ENGAGED",
-                "severity": "MEDIUM",
-                "message": "ATT not prominent — proprioceptive drive from foot compromised"
-            })
-
+        else:
+            foot_glute_score = 0.60
         # ── M3: Movement Bandwidth ─────────────────────────────────
         upper_half = gray_frame[:height//2, :]
         lower_half = gray_frame[height//2:, :]
@@ -632,7 +620,7 @@ def analyze():
                 else:
                     correlation = 0.5
                 tensegrity_score = (amp_ratio * 0.5) + (correlation * 0.5)
-                if correlation < 0.4:
+                if correlation < 0.5:
                     lag_ms = 100.0
                     flags.append({
                         "code": "SEGMENTED_MOVEMENT",
@@ -666,8 +654,8 @@ def analyze():
             ENTROPY_THRESHOLD = 0.5
             warmup_adequate = (pct_change > COLOR_THRESHOLD) or (entropy_delta > ENTROPY_THRESHOLD)
             hydro_score = (
-                min(pct_change / 0.10, 1.0) * 0.60 +
-                min(abs(entropy_delta) / 5.0, 1.0) * 0.40
+                min(pct_change / 0.20, 1.0) * 0.60 +
+                min(abs(entropy_delta) / 10.0, 1.0) * 0.40
             )
             hydro_score = max(min(hydro_score, 1.0), 0.0)
         else:
@@ -717,7 +705,7 @@ def analyze():
                 var_x = float(np.var(acc_x)) if len(acc_x) > 0 else 0
                 var_y = float(np.var(acc_y)) if len(acc_y) > 0 else 0
                 dispersion = min(var_x, var_y) / (max(var_x, var_y) + 1e-6)
-
+                dispersion = min(dispersion * 3.0, 1.0)
                 if len(acc_mag) > 0:
                     mean_acc = float(np.mean(acc_mag))
                     std_acc = float(np.std(acc_mag))
@@ -725,10 +713,16 @@ def analyze():
                     spike_count = int(np.sum(spike_mask))
 
                 stability_score = (
-                    dispersion * 0.60 +
-                    (1.0 / (spike_count + 1)) * 0.40
+                dispersion * 0.60 +
+                (1.0 / (spike_count + 1)) * 0.40
                 )
                 stability_score = max(min(stability_score, 1.0), 0.0)
+                
+
+                # Smooth stability score with EMA
+                prev_stability = getattr(app, 'prev_stability', 0.5)
+                stability_score = 0.3 * stability_score + 0.7 * prev_stability
+                app.prev_stability = stability_score
 
                 if spike_count > 3:
                     flags.append({
@@ -742,7 +736,6 @@ def analyze():
                         "severity": "MEDIUM",
                         "message": "Uniplanar compensation — frontal/transverse plane blind spots"
                     })
-
         # ── Composite Score (M1 + M2 + M3 + M4 + M5) ──────────────
         composite = (
             shear_score      * 0.25 +
