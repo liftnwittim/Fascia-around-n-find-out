@@ -39,6 +39,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isInitialized = false;
   bool _isAnalyzing = false;
   bool _showResults = false;
+  String _archEngaged = 'neutral';
 
   double _score = 0;
   String _tier = '--';
@@ -100,7 +101,7 @@ class _HomeScreenState extends State<HomeScreen> {
       request.files.add(
         http.MultipartFile.fromBytes('frame', bytes, filename: 'frame.jpg'),
       );
-      request.fields['arch_engaged'] = 'neutral';
+      request.fields['arch_engaged'] = _archEngaged;
 
       final response = await request.send();
       final responseBody = await response.stream.bytesToString();
@@ -280,28 +281,53 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
 
                   // Analyze button
-                  ElevatedButton(
-                    onPressed: _isAnalyzing ? null : _analyze,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      minimumSize: const Size(200, 48),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(24)),
-                    ),
-                    child: Text(
-                      _isAnalyzing ? 'Analyzing...' : 'Analyze',
-                      style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+                  // Arch engagement toggle
+Row(
+  mainAxisAlignment: MainAxisAlignment.center,
+  children: [
+    const Text('Arch:',
+        style: TextStyle(color: Colors.white54, fontSize: 12)),
+    const SizedBox(width: 8),
+    ToggleButtons(
+      isSelected: [
+        _archEngaged == 'false',
+        _archEngaged == 'neutral',
+        _archEngaged == 'true',
+      ],
+      onPressed: (index) {
+        setState(() {
+          _archEngaged = ['false', 'neutral', 'true'][index];
+        });
+      },
+      borderRadius: BorderRadius.circular(8),
+      selectedColor: Colors.black,
+      fillColor: Colors.white,
+      color: Colors.white54,
+      textStyle: const TextStyle(fontSize: 11),
+      constraints: const BoxConstraints(minWidth: 64, minHeight: 32),
+      children: const [
+        Text('Collapsed'),
+        Text('Neutral'),
+        Text('Engaged'),
+      ],
+    ),
+  ],
+),
+const SizedBox(height: 12),
+ElevatedButton(
+  onPressed: _isAnalyzing ? null : _analyze,
+  style: ElevatedButton.styleFrom(
+    backgroundColor: Colors.white,
+    minimumSize: const Size(200, 48),
+    shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24)),
+  ),
+  child: Text(
+    _isAnalyzing ? 'Analyzing...' : 'Analyze',
+    style: const TextStyle(
+        color: Colors.black,
+        fontSize: 16,
+        fontWeight: FontWeight.bold),
+  ),
+),
 }
