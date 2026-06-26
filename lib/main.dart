@@ -142,7 +142,7 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Text(label,
                   style: const TextStyle(color: Colors.white70, fontSize: 11)),
-              Text('${v.toStringAsFixed(1)}',
+              Text(v.toStringAsFixed(1),
                   style: const TextStyle(
                       color: Colors.white,
                       fontSize: 11,
@@ -280,54 +280,67 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 8),
                   ],
 
-                  // Analyze button
                   // Arch engagement toggle
-Row(
-  mainAxisAlignment: MainAxisAlignment.center,
-  children: [
-    const Text('Arch:',
-        style: TextStyle(color: Colors.white54, fontSize: 12)),
-    const SizedBox(width: 8),
-    ToggleButtons(
-      isSelected: [
-        _archEngaged == 'false',
-        _archEngaged == 'neutral',
-        _archEngaged == 'true',
-      ],
-      onPressed: (index) {
-        setState(() {
-          _archEngaged = ['false', 'neutral', 'true'][index];
-        });
-      },
-      borderRadius: BorderRadius.circular(8),
-      selectedColor: Colors.black,
-      fillColor: Colors.white,
-      color: Colors.white54,
-      textStyle: const TextStyle(fontSize: 11),
-      constraints: const BoxConstraints(minWidth: 64, minHeight: 32),
-      children: const [
-        Text('Collapsed'),
-        Text('Neutral'),
-        Text('Engaged'),
-      ],
-    ),
-  ],
-),
-const SizedBox(height: 12),
-ElevatedButton(
-  onPressed: _isAnalyzing ? null : _analyze,
-  style: ElevatedButton.styleFrom(
-    backgroundColor: Colors.white,
-    minimumSize: const Size(200, 48),
-    shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24)),
-  ),
-  child: Text(
-    _isAnalyzing ? 'Analyzing...' : 'Analyze',
-    style: const TextStyle(
-        color: Colors.black,
-        fontSize: 16,
-        fontWeight: FontWeight.bold),
-  ),
-),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text('Arch:',
+                          style:
+                              TextStyle(color: Colors.white54, fontSize: 12)),
+                      const SizedBox(width: 8),
+                      ToggleButtons(
+                        isSelected: [
+                          _archEngaged == 'false',
+                          _archEngaged == 'neutral',
+                          _archEngaged == 'true',
+                        ],
+                        onPressed: (index) {
+                          setState(() {
+                            _archEngaged =
+                                ['false', 'neutral', 'true'][index];
+                          });
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        selectedColor: Colors.black,
+                        fillColor: Colors.white,
+                        color: Colors.white54,
+                        textStyle: const TextStyle(fontSize: 11),
+                        constraints: const BoxConstraints(
+                            minWidth: 72, minHeight: 32),
+                        children: const [
+                          Text('Collapsed'),
+                          Text('Neutral'),
+                          Text('Engaged'),
+                        ],
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // Analyze button
+                  ElevatedButton(
+                    onPressed: _isAnalyzing ? null : _analyze,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      minimumSize: const Size(200, 48),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(24)),
+                    ),
+                    child: Text(
+                      _isAnalyzing ? 'Analyzing...' : 'Analyze',
+                      style: const TextStyle(
+                          color: Colors.black,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
