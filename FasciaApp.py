@@ -5,6 +5,8 @@ import numpy as np
 from scipy.stats import pearsonr
 import os
 from flask import Flask, request, jsonify
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 from flask import Flask, request, jsonify
 os.environ["MEDIAPIPE_DISABLE_GPU"] = "1"
