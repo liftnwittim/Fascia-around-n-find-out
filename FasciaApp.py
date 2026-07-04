@@ -537,18 +537,10 @@ def health():
     return jsonify({"status": "ok"})
 
 @app.route("/analyze", methods=["POST"])
-@limiter.limit("30 per minute")
-def analyze():
-    try:
-        if 'frame' not in request.files:
-            if request.content_length and request.content_length > 5 * 1024 * 1024:
+if request.content_length and request.content_length > 5 * 1024 * 1024:
             return jsonify({"error": "File too large. Maximum size is 5MB."}), 413
+        if 'frame' not in request.files:
             return jsonify({"error": "No frame received"}), 400
-
-        file = request.files['frame']
-        npimg = np.frombuffer(file.read(), np.uint8)
-        frame = cv2.imdecode(npimg, cv2.IMREAD_COLOR)
-
         if frame is None:
             return jsonify({"error": "Could not decode frame"}), 400
 
