@@ -532,6 +532,12 @@ def dispatch_alerts(alert_queue: List[AlertFlag], score: FascialIntegrityScore):
 app = Flask(__name__)
 
 @app.route("/health", methods=["GET"])
+
+@app.route("/health", methods=["GET"])
+@limiter.exempt
+def health():
+    return jsonify({"status": "ok"})
+    
 @app.route("/analyze", methods=["POST"])
 @limiter.limit("30 per minute")
 def analyze():
