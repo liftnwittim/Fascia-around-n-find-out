@@ -11,7 +11,14 @@ from flask_limiter.util import get_remote_address
 from flask import Flask, request, jsonify
 os.environ["MEDIAPIPE_DISABLE_GPU"] = "1"
 app = Flask(__name__)
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["200 per day", "30 per minute"],
+    storage_uri="memory://"
+)
 
+app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5MB max upload
 
 os.environ["MEDIAPIPE_DISABLE_GPU"] = "1"
 from dataclasses import dataclass, field
@@ -525,13 +532,17 @@ def dispatch_alerts(alert_queue: List[AlertFlag], score: FascialIntegrityScore):
 app = Flask(__name__)
 
 @app.route("/health", methods=["GET"])
+@limiter.exempt
 def health():
     return jsonify({"status": "ok"})
 
 @app.route("/analyze", methods=["POST"])
+@limiter.limit("30 per minute")
 def analyze():
     try:
         if 'frame' not in request.files:
+            if request.content_length and request.content_length > 5 * 1024 * 1024:
+            return jsonify({"error": "File too large. Maximum size is 5MB."}), 413
             return jsonify({"error": "No frame received"}), 400
 
         file = request.files['frame']
@@ -777,4 +788,5 @@ def analyze():
         })
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        app.logger.error(f"Analyze error: {str(e)}")
+        return jsonify({"error": "Analysis failed. Please try again."}), 500
