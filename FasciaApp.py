@@ -532,17 +532,14 @@ def dispatch_alerts(alert_queue: List[AlertFlag], score: FascialIntegrityScore):
 app = Flask(__name__)
 
 @app.route("/health", methods=["GET"])
-@limiter.exempt
-def health():
-    return jsonify({"status": "ok"})
-
 @app.route("/analyze", methods=["POST"])
-if request.content_length and request.content_length > 5 * 1024 * 1024:
+@limiter.limit("30 per minute")
+def analyze():
+    try:
+        if request.content_length and request.content_length > 5 * 1024 * 1024:
             return jsonify({"error": "File too large. Maximum size is 5MB."}), 413
         if 'frame' not in request.files:
             return jsonify({"error": "No frame received"}), 400
-        if frame is None:
-            return jsonify({"error": "Could not decode frame"}), 400
 
         flags = []
         height, width = frame.shape[:2]
