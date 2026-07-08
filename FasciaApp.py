@@ -547,6 +547,13 @@ def analyze():
         if 'frame' not in request.files:
             return jsonify({"error": "No frame received"}), 400
 
+        file = request.files['frame']
+        npimg = np.frombuffer(file.read(), np.uint8)
+        frame = cv2.imdecode(npimg, cv2.IMREAD_COLOR)
+
+        if frame is None:
+            return jsonify({"error": "Could not decode frame"}), 400
+
         flags = []
         height, width = frame.shape[:2]
 
