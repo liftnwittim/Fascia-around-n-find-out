@@ -753,14 +753,14 @@ def analyze():
                     })
         # ── Composite Score (M1 + M2 + M3 + M4 + M5) ──────────────
         composite = (
-            shear_score      * 0.25 +
+            shear_score      * 0.30 +
             foot_glute_score * 0.20 +
-            tensegrity_score * 0.25 +
-            hydro_score      * 0.15 +
-            stability_score  * 0.15
+            tensegrity_score * 0.30 +
+            hydro_score      * 0.10 +
+            stability_score  * 0.10
         )
 
-        if hydro_score < 0.20:
+        if hydro_score < 0.10:
             composite = min(composite, 0.45)
 
         score_100 = round(composite * 100, 1)
