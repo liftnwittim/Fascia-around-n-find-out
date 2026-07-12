@@ -297,8 +297,8 @@ def hydraulic_thermal(packet: FramePacket) -> ModuleScore:
     entropy_delta = texture_end - texture_start
 
     # ── 3. Score ───────────────────────────────────────────────────
-    COLOR_THRESHOLD  = 0.15    # 3% red-channel increase = minimal adequate warmup
-    ENTROPY_THRESHOLD = 2.0
+    COLOR_THRESHOLD  = 0.08    # 3% red-channel increase = minimal adequate warmup
+    ENTROPY_THRESHOLD = 1.0
 
     warmup_adequate = (pct_change > COLOR_THRESHOLD) and (entropy_delta > ENTROPY_THRESHOLD)
 
@@ -760,7 +760,7 @@ def analyze():
             stability_score  * 0.15
         )
 
-        if hydro_score < 0.30:
+        if hydro_score < 0.20:
             composite = min(composite, 0.45)
 
         score_100 = round(composite * 100, 1)
