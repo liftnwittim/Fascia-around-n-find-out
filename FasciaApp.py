@@ -598,7 +598,7 @@ def analyze():
         # ── M3: Movement Bandwidth ─────────────────────────────────
         upper_half = gray_frame[:height//2, :]
         lower_half = gray_frame[height//2:, :]
-        tensegrity_score = 0.5
+        tensegrity_score = 0.65
         lag_ms = 0.0
         prev_upper = getattr(app, 'prev_upper', None)
         prev_lower = getattr(app, 'prev_lower', None)
@@ -684,7 +684,7 @@ def analyze():
             })
 
         # ── M5: Stability Map ──────────────────────────────────────
-        stability_score = 0.5
+        stability_score = 0.65
         spike_count = 0
         prev_frame_m5 = getattr(app, 'prev_frame_m5', None)
         app.prev_frame_m5 = gray_frame
