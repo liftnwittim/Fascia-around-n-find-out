@@ -17,16 +17,158 @@ class FasciaApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Fascia App',
+      title: 'LIFTNWITTIM Holistic Wellness',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.black),
         useMaterial3: true,
       ),
-      home: const HomeScreen(),
+      home: const WelcomeScreen(),
     );
   }
 }
 
+// ── WELCOME SCREEN ────────────────────────────────────────────
+class WelcomeScreen extends StatelessWidget {
+  const WelcomeScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 32),
+              const Text(
+                'LIFTNWITTIM',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 3),
+              ),
+              const Text(
+                'HOLISTIC WELLNESS APP',
+                style: TextStyle(
+                    color: Colors.white54,
+                    fontSize: 13,
+                    letterSpacing: 2),
+              ),
+              const SizedBox(height: 32),
+              const Text(
+                'Welcome to the\nPath of Holistic Wellness.',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 26,
+                    fontWeight: FontWeight.w300,
+                    height: 1.4),
+              ),
+              const SizedBox(height: 40),
+              const Divider(color: Colors.white12),
+              const SizedBox(height: 24),
+              const Text(
+                'WHAT WE MEASURE',
+                style: TextStyle(
+                    color: Colors.white38,
+                    fontSize: 11,
+                    letterSpacing: 2),
+              ),
+              const SizedBox(height: 20),
+              _infoCard(
+                'M1  Shearing Force Algorithm',
+                'Measures how well your body\'s internal layers slide past each other like slick pancakes — preventing stiff knots and ensuring pain-free movement.',
+              ),
+              _infoCard(
+                'M2  Foot-to-Glute Connection',
+                'Checks if your feet are acting as awake "antennas" that talk directly to your glutes for a strong, connected foundation.',
+              ),
+              _infoCard(
+                'M3  Movement Bandwidth',
+                'Tracks whether your body moves as one integrated, springy unit or in separate, clunky pieces that slow you down and limit your power.',
+              ),
+              _infoCard(
+                'M4  Hydraulic Indicator',
+                'Acts as a safety gate to confirm your "body oil" is thin and warm enough for you to move fast without the risk of injury.',
+              ),
+              _infoCard(
+                'M5  Stability Map',
+                'Measures your ability to spread out pressure during "organized chaos," protecting your joints from being overloaded during sudden or unpredictable movements.',
+              ),
+              const Spacer(),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const HomeScreen()),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    minimumSize: const Size(double.infinity, 52),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(26)),
+                  ),
+                  child: const Text(
+                    'Begin Assessment',
+                    style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _infoCard(String title, String description) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(
+            width: 4,
+            child: DecoratedBox(
+              decoration: BoxDecoration(color: Colors.white24),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                Text(description,
+                    style: const TextStyle(
+                        color: Colors.white54,
+                        fontSize: 11,
+                        height: 1.5)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── HOME SCREEN ───────────────────────────────────────────────
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -105,6 +247,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
       final response = await request.send();
       final responseBody = await response.stream.bytesToString();
+      print('RAW RESPONSE: $responseBody');
       final data = jsonDecode(responseBody);
 
       setState(() {
@@ -114,8 +257,25 @@ class _HomeScreenState extends State<HomeScreen> {
         _flags = data['flags'] ?? [];
         _showResults = true;
       });
+
+      if (data['frame_received'] == true) {
+        print('Resolution: ${data['resolution']}');
+        final debug = data['debug'];
+        if (debug != null) {
+          print('M1 Shear: ${debug['m1_shear']}');
+          print('M2 Foot-Glute: ${debug['m2_foot_glute']}');
+          print('M3 Tensegrity: ${debug['m3_tensegrity']}');
+          print('M4 Hydro: ${debug['m4_hydro']}');
+          print('M5 Stability: ${debug['m5_stability']}');
+        }
+        if (data['flags'] != null && data['flags'].isNotEmpty) {
+          print('FLAGS: ${data['flags']}');
+        }
+      }
     } catch (e) {
+      print('ANALYZE ERROR: $e');
       setState(() {
+        _score = 0;
         _tier = 'Error';
         _showResults = false;
       });
@@ -130,10 +290,10 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  Widget _moduleBar(String label, dynamic value) {
+  Widget _moduleBar(String label, String description, dynamic value) {
     final double v = (value ?? 0).toDouble();
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 5),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -141,7 +301,10 @@ class _HomeScreenState extends State<HomeScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(label,
-                  style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                  style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold)),
               Text(v.toStringAsFixed(1),
                   style: const TextStyle(
                       color: Colors.white,
@@ -149,7 +312,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       fontWeight: FontWeight.bold)),
             ],
           ),
-          const SizedBox(height: 3),
+          const SizedBox(height: 2),
+          Text(description,
+              style: const TextStyle(
+                  color: Colors.white38, fontSize: 10, height: 1.3)),
+          const SizedBox(height: 4),
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
@@ -235,13 +402,28 @@ class _HomeScreenState extends State<HomeScreen> {
 
                   const SizedBox(height: 12),
 
-                  // Module breakdown
+                  // Module breakdown with descriptions
                   if (_showResults && _debug.isNotEmpty) ...[
-                    _moduleBar('M1  Shear', _debug['m1_shear']),
-                    _moduleBar('M2  Foot-Glute', _debug['m2_foot_glute']),
-                    _moduleBar('M3  Tensegrity', _debug['m3_tensegrity']),
-                    _moduleBar('M4  Hydraulic', _debug['m4_hydro']),
-                    _moduleBar('M5  Stability', _debug['m5_stability']),
+                    _moduleBar(
+                        'M1  Shearing Force',
+                        'How freely your internal layers slide past each other',
+                        _debug['m1_shear']),
+                    _moduleBar(
+                        'M2  Foot-to-Glute',
+                        'Antenna signal from feet to glutes',
+                        _debug['m2_foot_glute']),
+                    _moduleBar(
+                        'M3  Movement Bandwidth',
+                        'Integrated springy unit vs clunky separate pieces',
+                        _debug['m3_tensegrity']),
+                    _moduleBar(
+                        'M4  Hydraulic',
+                        'Body oil warmth — safety gate for explosive movement',
+                        _debug['m4_hydro']),
+                    _moduleBar(
+                        'M5  Stability',
+                        'Pressure distribution during organized chaos',
+                        _debug['m5_stability']),
                     const SizedBox(height: 8),
                   ],
 
@@ -285,8 +467,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const Text('Arch:',
-                          style:
-                              TextStyle(color: Colors.white54, fontSize: 12)),
+                          style: TextStyle(
+                              color: Colors.white54, fontSize: 12)),
                       const SizedBox(width: 8),
                       ToggleButtons(
                         isSelected: [
