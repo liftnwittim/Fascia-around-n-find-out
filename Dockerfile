@@ -21,4 +21,4 @@ COPY . .
 
 EXPOSE 8080
 
-CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--timeout", "120", "FasciaApp:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "3", "--timeout", "120", "--max-requests", "1000", "--max-requests-jitter", "50", "FasciaApp:app"]

@@ -1,4 +1,5 @@
 flask
+flask-limiter
 opencv-python-headless
 numpy
 scipy

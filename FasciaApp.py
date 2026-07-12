@@ -5,11 +5,20 @@ import numpy as np
 from scipy.stats import pearsonr
 import os
 from flask import Flask, request, jsonify
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 from flask import Flask, request, jsonify
 os.environ["MEDIAPIPE_DISABLE_GPU"] = "1"
 app = Flask(__name__)
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["200 per day", "30 per minute"],
+    storage_uri="memory://"
+)
 
+app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5MB max upload
 
 os.environ["MEDIAPIPE_DISABLE_GPU"] = "1"
 from dataclasses import dataclass, field
@@ -288,8 +297,8 @@ def hydraulic_thermal(packet: FramePacket) -> ModuleScore:
     entropy_delta = texture_end - texture_start
 
     # ── 3. Score ───────────────────────────────────────────────────
-    COLOR_THRESHOLD  = 0.15    # 3% red-channel increase = minimal adequate warmup
-    ENTROPY_THRESHOLD = 2.0
+    COLOR_THRESHOLD  = 0.08    # 3% red-channel increase = minimal adequate warmup
+    ENTROPY_THRESHOLD = 1.0
 
     warmup_adequate = (pct_change > COLOR_THRESHOLD) and (entropy_delta > ENTROPY_THRESHOLD)
 
@@ -523,12 +532,18 @@ def dispatch_alerts(alert_queue: List[AlertFlag], score: FascialIntegrityScore):
 app = Flask(__name__)
 
 @app.route("/health", methods=["GET"])
+
+@app.route("/health", methods=["GET"])
+@limiter.exempt
 def health():
     return jsonify({"status": "ok"})
-
+    
 @app.route("/analyze", methods=["POST"])
+@limiter.limit("30 per minute")
 def analyze():
     try:
+        if request.content_length and request.content_length > 5 * 1024 * 1024:
+            return jsonify({"error": "File too large. Maximum size is 5MB."}), 413
         if 'frame' not in request.files:
             return jsonify({"error": "No frame received"}), 400
 
@@ -583,7 +598,7 @@ def analyze():
         # ── M3: Movement Bandwidth ─────────────────────────────────
         upper_half = gray_frame[:height//2, :]
         lower_half = gray_frame[height//2:, :]
-        tensegrity_score = 0.5
+        tensegrity_score = 0.65
         lag_ms = 0.0
         prev_upper = getattr(app, 'prev_upper', None)
         prev_lower = getattr(app, 'prev_lower', None)
@@ -669,7 +684,7 @@ def analyze():
             })
 
         # ── M5: Stability Map ──────────────────────────────────────
-        stability_score = 0.5
+        stability_score = 0.65
         spike_count = 0
         prev_frame_m5 = getattr(app, 'prev_frame_m5', None)
         app.prev_frame_m5 = gray_frame
@@ -738,14 +753,14 @@ def analyze():
                     })
         # ── Composite Score (M1 + M2 + M3 + M4 + M5) ──────────────
         composite = (
-            shear_score      * 0.25 +
+            shear_score      * 0.30 +
             foot_glute_score * 0.20 +
-            tensegrity_score * 0.25 +
-            hydro_score      * 0.15 +
-            stability_score  * 0.15
+            tensegrity_score * 0.30 +
+            hydro_score      * 0.10 +
+            stability_score  * 0.10
         )
 
-        if hydro_score < 0.30:
+        if hydro_score < 0.10:
             composite = min(composite, 0.45)
 
         score_100 = round(composite * 100, 1)
@@ -775,4 +790,5 @@ def analyze():
         })
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        app.logger.error(f"Analyze error: {str(e)}")
+        return jsonify({"error": "Analysis failed. Please try again."}), 500
