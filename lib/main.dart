@@ -377,6 +377,35 @@ class _HomeScreenState extends State<HomeScreen> {
                   top: 48,
                   right: 16,
                   child: GestureDetector(
+                   // Positioning guide overlay
+                Positioned.fill(
+                  child: CustomPaint(
+                    painter: SilhouettePainter(),
+                  ),
+                ),
+                Positioned(
+                  bottom: 16,
+                  left: 0,
+                  right: 0,
+                  child: Column(
+                    children: [
+                      Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 24),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.black54,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Text(
+                          'Tripod at 62" · Stand 7 feet away · Full body visible',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.white70, fontSize: 11),
+                        ),
+                      ),
+                    ],
+                  ),
+                ), 
                     onTap: _isAnalyzing ? null : _toggleCamera,
                     child: Container(
                       padding: const EdgeInsets.all(8),
@@ -576,5 +605,100 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
+    class SilhouettePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withOpacity(0.15)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+
+    final cx = size.width / 2;
+    final top = size.height * 0.04;
+
+    // Head
+    canvas.drawOval(
+      Rect.fromCenter(
+          center: Offset(cx, top + size.height * 0.07),
+          width: size.width * 0.12,
+          height: size.height * 0.09),
+      paint,
+    );
+
+    // Neck
+    canvas.drawLine(
+      Offset(cx, top + size.height * 0.115),
+      Offset(cx, top + size.height * 0.14),
+      paint,
+    );
+
+    // Shoulders
+    canvas.drawLine(
+      Offset(cx - size.width * 0.18, top + size.height * 0.16),
+      Offset(cx + size.width * 0.18, top + size.height * 0.16),
+      paint,
+    );
+
+    // Left arm
+    canvas.drawLine(
+      Offset(cx - size.width * 0.18, top + size.height * 0.16),
+      Offset(cx - size.width * 0.22, top + size.height * 0.35),
+      paint,
+    );
+
+    // Right arm
+    canvas.drawLine(
+      Offset(cx + size.width * 0.18, top + size.height * 0.16),
+      Offset(cx + size.width * 0.22, top + size.height * 0.35),
+      paint,
+    );
+
+    // Torso
+    canvas.drawLine(
+      Offset(cx - size.width * 0.18, top + size.height * 0.16),
+      Offset(cx - size.width * 0.14, top + size.height * 0.42),
+      paint,
+    );
+    canvas.drawLine(
+      Offset(cx + size.width * 0.18, top + size.height * 0.16),
+      Offset(cx + size.width * 0.14, top + size.height * 0.42),
+      paint,
+    );
+
+    // Hips
+    canvas.drawLine(
+      Offset(cx - size.width * 0.14, top + size.height * 0.42),
+      Offset(cx + size.width * 0.14, top + size.height * 0.42),
+      paint,
+    );
+
+    // Left leg
+    canvas.drawLine(
+      Offset(cx - size.width * 0.10, top + size.height * 0.42),
+      Offset(cx - size.width * 0.12, top + size.height * 0.70),
+      paint,
+    );
+    canvas.drawLine(
+      Offset(cx - size.width * 0.12, top + size.height * 0.70),
+      Offset(cx - size.width * 0.13, top + size.height * 0.92),
+      paint,
+    );
+
+    // Right leg
+    canvas.drawLine(
+      Offset(cx + size.width * 0.10, top + size.height * 0.42),
+      Offset(cx + size.width * 0.12, top + size.height * 0.70),
+      paint,
+    );
+    canvas.drawLine(
+      Offset(cx + size.width * 0.12, top + size.height * 0.70),
+      Offset(cx + size.width * 0.13, top + size.height * 0.92),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
   }
 }
