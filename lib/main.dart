@@ -41,7 +41,7 @@ class WelcomeScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 32),
+              const SizedBox(height: 16),
               const Text(
                 'LIFTNWITTIM',
                 style: TextStyle(
@@ -57,7 +57,7 @@ class WelcomeScreen extends StatelessWidget {
                     fontSize: 13,
                     letterSpacing: 2),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 16),
               const Text(
                 'Welcome to the\nPath of Holistic Wellness.',
                 style: TextStyle(
@@ -66,9 +66,9 @@ class WelcomeScreen extends StatelessWidget {
                     fontWeight: FontWeight.w300,
                     height: 1.4),
               ),
-              const SizedBox(height: 40),
+              const SizedBox(height: 20),
               const Divider(color: Colors.white12),
-              const SizedBox(height: 24),
+              const SizedBox(height: 12),
               const Text(
                 'WHAT WE MEASURE',
                 style: TextStyle(
@@ -76,7 +76,7 @@ class WelcomeScreen extends StatelessWidget {
                     fontSize: 11,
                     letterSpacing: 2),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 12),
               _infoCard(
                 'M1  Shearing Force Algorithm',
                 'Measures how well your body\'s internal layers slide past each other like slick pancakes — preventing stiff knots and ensuring pain-free movement.',
@@ -178,6 +178,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   late CameraController _controller;
+  bool _isRearCamera = true;
   bool _isInitialized = false;
   bool _isAnalyzing = false;
   bool _showResults = false;
@@ -198,9 +199,29 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _initCamera() async {
-    _controller = CameraController(cameras[0], ResolutionPreset.high);
+    final camera = _isRearCamera
+        ? cameras.firstWhere(
+            (c) => c.lensDirection == CameraLensDirection.back,
+            orElse: () => cameras[0])
+        : cameras.firstWhere(
+            (c) => c.lensDirection == CameraLensDirection.front,
+            orElse: () => cameras[0]);
+
+    if (_isInitialized) {
+      await _controller.dispose();
+    }
+
+    _controller = CameraController(camera, ResolutionPreset.high);
     await _controller.initialize();
     setState(() => _isInitialized = true);
+  }
+
+  Future<void> _toggleCamera() async {
+    setState(() {
+      _isRearCamera = !_isRearCamera;
+      _isInitialized = false;
+    });
+    await _initCamera();
   }
 
   Color _tierColor(String tier) {
@@ -347,9 +368,40 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           Expanded(
             flex: 3,
-            child: _isInitialized
-                ? CameraPreview(_controller)
-                : const Center(child: CircularProgressIndicator()),
+            child: Stack(
+              children: [
+                _isInitialized
+                    ? CameraPreview(_controller)
+                    : const Center(child: CircularProgressIndicator()),
+                Positioned(
+                  top: 48,
+                  right: 16,
+                  child: GestureDetector(
+                    onTap: _isAnalyzing ? null : _toggleCamera,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.flip_camera_ios,
+                              color: Colors.white, size: 20),
+                          const SizedBox(width: 6),
+                          Text(
+                            _isRearCamera ? 'Rear' : 'Front',
+                            style: const TextStyle(
+                                color: Colors.white, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
           Expanded(
             flex: 2,
