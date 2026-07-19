@@ -168,6 +168,109 @@ class WelcomeScreen extends StatelessWidget {
   }
 }
 
+// ── SILHOUETTE PAINTER ────────────────────────────────────────
+class SilhouettePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withOpacity(0.15)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+
+    final cx = size.width / 2;
+    final top = size.height * 0.04;
+
+    // Head
+    canvas.drawOval(
+      Rect.fromCenter(
+          center: Offset(cx, top + size.height * 0.07),
+          width: size.width * 0.12,
+          height: size.height * 0.09),
+      paint,
+    );
+
+    // Neck
+    canvas.drawLine(
+      Offset(cx, top + size.height * 0.115),
+      Offset(cx, top + size.height * 0.14),
+      paint,
+    );
+
+    // Shoulders
+    canvas.drawLine(
+      Offset(cx - size.width * 0.18, top + size.height * 0.16),
+      Offset(cx + size.width * 0.18, top + size.height * 0.16),
+      paint,
+    );
+
+    // Left arm
+    canvas.drawLine(
+      Offset(cx - size.width * 0.18, top + size.height * 0.16),
+      Offset(cx - size.width * 0.22, top + size.height * 0.35),
+      paint,
+    );
+
+    // Right arm
+    canvas.drawLine(
+      Offset(cx + size.width * 0.18, top + size.height * 0.16),
+      Offset(cx + size.width * 0.22, top + size.height * 0.35),
+      paint,
+    );
+
+    // Torso left
+    canvas.drawLine(
+      Offset(cx - size.width * 0.18, top + size.height * 0.16),
+      Offset(cx - size.width * 0.14, top + size.height * 0.42),
+      paint,
+    );
+
+    // Torso right
+    canvas.drawLine(
+      Offset(cx + size.width * 0.18, top + size.height * 0.16),
+      Offset(cx + size.width * 0.14, top + size.height * 0.42),
+      paint,
+    );
+
+    // Hips
+    canvas.drawLine(
+      Offset(cx - size.width * 0.14, top + size.height * 0.42),
+      Offset(cx + size.width * 0.14, top + size.height * 0.42),
+      paint,
+    );
+
+    // Left upper leg
+    canvas.drawLine(
+      Offset(cx - size.width * 0.10, top + size.height * 0.42),
+      Offset(cx - size.width * 0.12, top + size.height * 0.70),
+      paint,
+    );
+
+    // Left lower leg
+    canvas.drawLine(
+      Offset(cx - size.width * 0.12, top + size.height * 0.70),
+      Offset(cx - size.width * 0.13, top + size.height * 0.92),
+      paint,
+    );
+
+    // Right upper leg
+    canvas.drawLine(
+      Offset(cx + size.width * 0.10, top + size.height * 0.42),
+      Offset(cx + size.width * 0.12, top + size.height * 0.70),
+      paint,
+    );
+
+    // Right lower leg
+    canvas.drawLine(
+      Offset(cx + size.width * 0.12, top + size.height * 0.70),
+      Offset(cx + size.width * 0.13, top + size.height * 0.92),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
 // ── HOME SCREEN ───────────────────────────────────────────────
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -178,10 +281,10 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   late CameraController _controller;
-  bool _isRearCamera = true;
   bool _isInitialized = false;
   bool _isAnalyzing = false;
   bool _showResults = false;
+  bool _isRearCamera = true;
   String _archEngaged = 'neutral';
 
   double _score = 0;
@@ -373,39 +476,40 @@ class _HomeScreenState extends State<HomeScreen> {
                 _isInitialized
                     ? CameraPreview(_controller)
                     : const Center(child: CircularProgressIndicator()),
-                Positioned(
-                  top: 48,
-                  right: 16,
-                  child: GestureDetector(
-                   // Positioning guide overlay
+                // Silhouette positioning guide
                 Positioned.fill(
                   child: CustomPaint(
                     painter: SilhouettePainter(),
                   ),
                 ),
+                // Positioning instruction
                 Positioned(
                   bottom: 16,
                   left: 0,
                   right: 0,
-                  child: Column(
-                    children: [
-                      Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 24),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.black54,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Text(
-                          'Tripod at 62" · Stand 7 feet away · Full body visible',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.white70, fontSize: 11),
-                        ),
+                  child: Center(
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 24),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                    ],
+                      child: const Text(
+                        'Tripod at 62" · Stand 7 feet away · Full body visible',
+                        textAlign: TextAlign.center,
+                        style:
+                            TextStyle(color: Colors.white70, fontSize: 11),
+                      ),
+                    ),
                   ),
-                ), 
+                ),
+                // Camera toggle
+                Positioned(
+                  top: 48,
+                  right: 16,
+                  child: GestureDetector(
                     onTap: _isAnalyzing ? null : _toggleCamera,
                     child: Container(
                       padding: const EdgeInsets.all(8),
@@ -483,7 +587,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                   const SizedBox(height: 12),
 
-                  // Module breakdown with descriptions
+                  // Module breakdown
                   if (_showResults && _debug.isNotEmpty) ...[
                     _moduleBar(
                         'M1  Shearing Force',
@@ -605,100 +709,5 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
-    class SilhouettePainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white.withOpacity(0.15)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-
-    final cx = size.width / 2;
-    final top = size.height * 0.04;
-
-    // Head
-    canvas.drawOval(
-      Rect.fromCenter(
-          center: Offset(cx, top + size.height * 0.07),
-          width: size.width * 0.12,
-          height: size.height * 0.09),
-      paint,
-    );
-
-    // Neck
-    canvas.drawLine(
-      Offset(cx, top + size.height * 0.115),
-      Offset(cx, top + size.height * 0.14),
-      paint,
-    );
-
-    // Shoulders
-    canvas.drawLine(
-      Offset(cx - size.width * 0.18, top + size.height * 0.16),
-      Offset(cx + size.width * 0.18, top + size.height * 0.16),
-      paint,
-    );
-
-    // Left arm
-    canvas.drawLine(
-      Offset(cx - size.width * 0.18, top + size.height * 0.16),
-      Offset(cx - size.width * 0.22, top + size.height * 0.35),
-      paint,
-    );
-
-    // Right arm
-    canvas.drawLine(
-      Offset(cx + size.width * 0.18, top + size.height * 0.16),
-      Offset(cx + size.width * 0.22, top + size.height * 0.35),
-      paint,
-    );
-
-    // Torso
-    canvas.drawLine(
-      Offset(cx - size.width * 0.18, top + size.height * 0.16),
-      Offset(cx - size.width * 0.14, top + size.height * 0.42),
-      paint,
-    );
-    canvas.drawLine(
-      Offset(cx + size.width * 0.18, top + size.height * 0.16),
-      Offset(cx + size.width * 0.14, top + size.height * 0.42),
-      paint,
-    );
-
-    // Hips
-    canvas.drawLine(
-      Offset(cx - size.width * 0.14, top + size.height * 0.42),
-      Offset(cx + size.width * 0.14, top + size.height * 0.42),
-      paint,
-    );
-
-    // Left leg
-    canvas.drawLine(
-      Offset(cx - size.width * 0.10, top + size.height * 0.42),
-      Offset(cx - size.width * 0.12, top + size.height * 0.70),
-      paint,
-    );
-    canvas.drawLine(
-      Offset(cx - size.width * 0.12, top + size.height * 0.70),
-      Offset(cx - size.width * 0.13, top + size.height * 0.92),
-      paint,
-    );
-
-    // Right leg
-    canvas.drawLine(
-      Offset(cx + size.width * 0.10, top + size.height * 0.42),
-      Offset(cx + size.width * 0.12, top + size.height * 0.70),
-      paint,
-    );
-    canvas.drawLine(
-      Offset(cx + size.width * 0.12, top + size.height * 0.70),
-      Offset(cx + size.width * 0.13, top + size.height * 0.92),
-      paint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
   }
 }
