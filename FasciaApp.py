@@ -572,6 +572,9 @@ def analyze():
             mean_flow = float(np.mean(magnitude))
             BASELINE = 3.0
             shear_score = min(mean_flow / BASELINE, 1.0)
+            prev_shear = getattr(app, 'prev_shear', 0.5)
+            shear_score = 0.3 * shear_score + 0.7 * prev_shear
+            app.prev_shear = shear_score
             if mean_flow < BASELINE * 0.50:
                 flags.append({
                     "code": "FASCIAL_DENSIFICATION",
