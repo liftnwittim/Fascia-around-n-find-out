@@ -105,10 +105,10 @@ def shearing_force(packet: FramePacket) -> ModuleScore:
     band_scores = compute_band_means(residual_map, bands=3)
 
     flags = []
-    # 30% threshold from spec — flag if any band falls 30% below baseline
-    BASELINE_SHEAR_MM = 2.0   # healthy reference from calibration dataset
+    # 30% threshold from spec — flag if any band falls 30% below 
+    _SHEAR_MM = 2.0   # healthy reference from calibration dataset
     for band, score in enumerate(band_scores):
-        if score < BASELINE_SHEAR_MM * 0.70:
+        if score < _SHEAR_MM * 0.70:
             flags.append(AlertFlag(
                 code="FASCIAL_DENSIFICATION",
                 region=f"thoracolumbar_band_{band}",
@@ -570,7 +570,7 @@ def analyze():
             )
             magnitude, _ = cv2.cartToPolar(flow[..., 0], flow[..., 1])
             mean_flow = float(np.mean(magnitude))
-            BASELINE = 12.0
+            BASELINE = 6.0
             shear_score = min(mean_flow / BASELINE, 1.0)
             if mean_flow < BASELINE * 0.70:
                 flags.append({
@@ -673,6 +673,9 @@ def analyze():
                 min(abs(entropy_delta) / 10.0, 1.0) * 0.40
             )
             hydro_score = max(min(hydro_score, 1.0), 0.0)
+            prev_hydro = getattr(app, 'prev_hydro', 0.5)
+            hydro_score = 0.3 * hydro_score + 0.7 * prev_hydro
+            app.prev_hydro = hydro_score
         else:
             app.texture_history = []
 
