@@ -570,9 +570,9 @@ def analyze():
             )
             magnitude, _ = cv2.cartToPolar(flow[..., 0], flow[..., 1])
             mean_flow = float(np.mean(magnitude))
-            BASELINE = 6.0
+            BASELINE = 3.0
             shear_score = min(mean_flow / BASELINE, 1.0)
-            if mean_flow < BASELINE * 0.70:
+            if mean_flow < BASELINE * 0.50:
                 flags.append({
                     "code": "FASCIAL_DENSIFICATION",
                     "severity": "HIGH" if mean_flow < BASELINE * 0.50 else "MEDIUM",
