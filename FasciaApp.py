@@ -677,7 +677,7 @@ def analyze():
             )
             hydro_score = max(min(hydro_score, 1.0), 0.0)
             prev_hydro = getattr(app, 'prev_hydro', 0.5)
-            hydro_score = 0.3 * hydro_score + 0.7 * prev_hydro
+            hydro_score = 0.15 * hydro_score + 0.85 * prev_hydro
             app.prev_hydro = hydro_score
         else:
             app.texture_history = []
